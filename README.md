@@ -4,7 +4,7 @@ Segmenting mall customers by income and spending behavior with K-Means clusterin
 
 ![Segmentation charts](segmentation_charts.png)
 
-**Interactive dashboard:** [Open the live dashboard](https://akilarasanp.github.io/Customer-segmentation/dashboard/)
+**Interactive dashboard:** [Open the live dashboard] https://akilarasanp.github.io/akilarasanp-Customer-segmentation/
 
 ## Objective
 
