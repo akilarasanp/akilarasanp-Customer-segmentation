@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer Segmentation Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#F2F5F7;--panel:#fff;--ink:#13233A;--muted:#5D6B7E;--line:#D9E0E7;--accent:#0E7C86;--amber:#D9922B;--grid:#E6EBF0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1822;--panel:#16222F;--ink:#E8EEF5;--muted:#93A1B3;--line:#26364A;--accent:#3FC1CB;--amber:#F0B25A;--grid:#22313F}}
+:root[data-theme="dark"]{--bg:#0F1822;--panel:#16222F;--ink:#E8EEF5;--muted:#93A1B3;--line:#26364A;--accent:#3FC1CB;--amber:#F0B25A;--grid:#22313F}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 48px}
+h1{font-size:1.7rem;margin:0;letter-spacing:-.02em}
+.sub0{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+h2{font-size:1rem;margin:0 0 8px}
+button,select{font:inherit;font-size:.9rem;color:var(--ink)}
+button:focus-visible,select:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.segs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:20px 0 14px}
+.seg{text-align:left;background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:8px;padding:10px 12px;cursor:pointer}
+.seg b{display:block;font-size:.95rem}.seg span{font-size:.8rem;color:var(--muted)}
+.seg.on{outline:2px solid var(--c);outline-offset:1px}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.filters label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted);gap:4px}
+select{padding:7px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);min-width:140px}
+.ghost{background:transparent;border:1px solid var(--accent);color:var(--accent);font-weight:600;border-radius:8px;padding:8px 14px;cursor:pointer}
+.kpis{display:grid;grid-template-columns:2fr repeat(4,1fr);margin:22px 0}
+.kpi{padding:0 18px;border-left:3px solid var(--line)}
+.kpi:first-child{border-left-color:var(--accent);padding-left:16px}
+.kpi small{color:var(--muted);font-size:.85rem}
+.kpi b{display:block;font-size:1.6rem;font-weight:600;letter-spacing:-.02em}
+.kpi:first-child b{font-size:3rem;font-weight:700;line-height:1.1}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.wide{grid-column:1/-1}
+.panel p{margin:0 0 8px;color:var(--muted);font-size:.8rem}
+.ch{position:relative;height:290px}.wide .ch{height:360px}
+.play{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-top:5px solid var(--c);border-radius:8px;padding:12px 14px;font-size:.88rem}
+.card.dim{opacity:.4}
+.card h3{margin:0 0 2px;font-size:1rem}.card small{color:var(--muted);display:block;margin-bottom:6px}
+.card p{margin:4px 0}
+.tw{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-weight:600}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+footer{margin-top:26px;color:var(--muted);font-size:.85rem;max-width:80ch}
+@media(max-width:760px){.kpis{grid-template-columns:1fr 1fr;row-gap:18px}.kpi:first-child{grid-column:1/-1}h1{font-size:1.4rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Customer Segmentation Dashboard</h1>
+<p class="sub0">200 mall customers grouped into 5 segments with K-Means (K=5, silhouette score 0.555). Click a segment to explore it.</p>
+<div class="segs" id="segs"></div>
+<section class="filters" aria-label="Filters">
+ <label>Gender<select id="gender"><option value="">All</option><option>Female</option><option>Male</option></select></label>
+ <label>Age group<select id="age"><option value="">All ages</option><option>18-29</option><option>30-44</option><option>45-59</option><option>60+</option></select></label>
+ <button class="ghost" id="reset">Reset filters</button>
+</section>
+<section class="kpis" aria-label="Key figures">
+ <div class="kpi"><small>Customers</small><b id="k-n"></b></div>
+ <div class="kpi"><small>Average age</small><b id="k-age"></b></div>
+ <div class="kpi"><small>Avg income (k$)</small><b id="k-inc"></b></div>
+ <div class="kpi"><small>Avg spending score</small><b id="k-sp"></b></div>
+ <div class="kpi"><small>Female share</small><b id="k-f"></b></div>
+</section>
+<main class="grid">
+ <section class="panel wide"><h2>Income vs spending score</h2><p>Each dot is one customer, colored by segment. Hover for details.</p><div class="ch"><canvas id="c-sc"></canvas></div></section>
+ <section class="panel"><h2>Segment profile</h2><p>Average age, income (k$) and spending score per segment.</p><div class="ch"><canvas id="c-pr"></canvas></div></section>
+ <section class="panel"><h2>Segment size</h2><p>Click a slice to filter by segment.</p><div class="ch"><canvas id="c-sz"></canvas></div></section>
+ <section class="panel wide"><h2>Age groups by segment</h2><p>Number of customers in each age group.</p><div class="ch" style="height:260px"><canvas id="c-ag"></canvas></div></section>
+</main>
+<h2 style="margin-top:28px">Segment playbook</h2>
+<div class="play" id="play"></div>
+<section class="panel" style="margin-top:22px"><h2 id="t-h"></h2><div class="tw"><table><thead><tr><th>ID</th><th>Segment</th><th>Gender</th><th>Age</th><th>Income (k$)</th><th>Spending</th></tr></thead><tbody id="tb"></tbody></table></div></section>
+<footer>Clustering used annual income and spending score (standardized). Age and gender were used only to describe the segments. Source: Mall Customers dataset, 200 customers, no missing values.</footer>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ORDER=['Premium Spenders','Careful Wealthy','Young Enthusiasts','Mainstream','Budget Savers'];
+const SEG={
+'Premium Spenders':{c:'#C0392B',d:'High income, high spending, younger customers. The best customers.',a:'VIP loyalty program and early access to new arrivals.'},
+'Careful Wealthy':{c:'#E08A2E',d:'High income but very low spending. The biggest growth opportunity.',a:'Personalized recommendations and premium offers to lift spending.'},
+'Young Enthusiasts':{c:'#8A5FBF',d:'Low income, high spending, around 25 years old.',a:'Trend-led products, EMI options and student discounts.'},
+'Mainstream':{c:'#3E9B5A',d:'The largest group, with moderate income and spending.',a:'Seasonal sales and combo offers to keep them loyal.'},
+'Budget Savers':{c:'#3B6FB6',d:'Low income and low spending, slightly older.',a:'Value packs and discounts, with low marketing cost.'}};
+const D=[[1,"Male",19,15,39,"Budget Savers"],[2,"Male",21,15,81,"Young Enthusiasts"],[3,"Female",20,16,6,"Budget Savers"],[4,"Female",23,16,77,"Young Enthusiasts"],[5,"Female",31,17,40,"Budget Savers"],[6,"Female",22,17,76,"Young Enthusiasts"],[7,"Female",35,18,6,"Budget Savers"],[8,"Female",23,18,94,"Young Enthusiasts"],[9,"Male",64,19,3,"Budget Savers"],[10,"Female",30,19,72,"Young Enthusiasts"],[11,"Male",67,19,14,"Budget Savers"],[12,"Female",35,19,99,"Young Enthusiasts"],[13,"Female",58,20,15,"Budget Savers"],[14,"Female",24,20,77,"Young Enthusiasts"],[15,"Male",37,20,13,"Budget Savers"],[16,"Male",22,20,79,"Young Enthusiasts"],[17,"Female",35,21,35,"Budget Savers"],[18,"Male",20,21,66,"Young Enthusiasts"],[19,"Male",52,23,29,"Budget Savers"],[20,"Female",35,23,98,"Young Enthusiasts"],[21,"Male",35,24,35,"Budget Savers"],[22,"Male",25,24,73,"Young Enthusiasts"],[23,"Female",46,25,5,"Budget Savers"],[24,"Male",31,25,73,"Young Enthusiasts"],[25,"Female",54,28,14,"Budget Savers"],[26,"Male",29,28,82,"Young Enthusiasts"],[27,"Female",45,28,32,"Budget Savers"],[28,"Male",35,28,61,"Young Enthusiasts"],[29,"Female",40,29,31,"Budget Savers"],[30,"Female",23,29,87,"Young Enthusiasts"],[31,"Male",60,30,4,"Budget Savers"],[32,"Female",21,30,73,"Young Enthusiasts"],[33,"Male",53,33,4,"Budget Savers"],[34,"Male",18,33,92,"Young Enthusiasts"],[35,"Female",49,33,14,"Budget Savers"],[36,"Female",21,33,81,"Young Enthusiasts"],[37,"Female",42,34,17,"Budget Savers"],[38,"Female",30,34,73,"Young Enthusiasts"],[39,"Female",36,37,26,"Budget Savers"],[40,"Female",20,37,75,"Young Enthusiasts"],[41,"Female",65,38,35,"Budget Savers"],[42,"Male",24,38,92,"Young Enthusiasts"],[43,"Male",48,39,36,"Budget Savers"],[44,"Female",31,39,61,"Mainstream"],[45,"Female",49,39,28,"Budget Savers"],[46,"Female",24,39,65,"Young Enthusiasts"],[47,"Female",50,40,55,"Mainstream"],[48,"Female",27,40,47,"Mainstream"],[49,"Female",29,40,42,"Mainstream"],[50,"Female",31,40,42,"Mainstream"],[51,"Female",49,42,52,"Mainstream"],[52,"Male",33,42,60,"Mainstream"],[53,"Female",31,43,54,"Mainstream"],[54,"Male",59,43,60,"Mainstream"],[55,"Female",50,43,45,"Mainstream"],[56,"Male",47,43,41,"Mainstream"],[57,"Female",51,44,50,"Mainstream"],[58,"Male",69,44,46,"Mainstream"],[59,"Female",27,46,51,"Mainstream"],[60,"Male",53,46,46,"Mainstream"],[61,"Male",70,46,56,"Mainstream"],[62,"Male",19,46,55,"Mainstream"],[63,"Female",67,47,52,"Mainstream"],[64,"Female",54,47,59,"Mainstream"],[65,"Male",63,48,51,"Mainstream"],[66,"Male",18,48,59,"Mainstream"],[67,"Female",43,48,50,"Mainstream"],[68,"Female",68,48,48,"Mainstream"],[69,"Male",19,48,59,"Mainstream"],[70,"Female",32,48,47,"Mainstream"],[71,"Male",70,49,55,"Mainstream"],[72,"Female",47,49,42,"Mainstream"],[73,"Female",60,50,49,"Mainstream"],[74,"Female",60,50,56,"Mainstream"],[75,"Male",59,54,47,"Mainstream"],[76,"Male",26,54,54,"Mainstream"],[77,"Female",45,54,53,"Mainstream"],[78,"Male",40,54,48,"Mainstream"],[79,"Female",23,54,52,"Mainstream"],[80,"Female",49,54,42,"Mainstream"],[81,"Male",57,54,51,"Mainstream"],[82,"Male",38,54,55,"Mainstream"],[83,"Male",67,54,41,"Mainstream"],[84,"Female",46,54,44,"Mainstream"],[85,"Female",21,54,57,"Mainstream"],[86,"Male",48,54,46,"Mainstream"],[87,"Female",55,57,58,"Mainstream"],[88,"Female",22,57,55,"Mainstream"],[89,"Female",34,58,60,"Mainstream"],[90,"Female",50,58,46,"Mainstream"],[91,"Female",68,59,55,"Mainstream"],[92,"Male",18,59,41,"Mainstream"],[93,"Male",48,60,49,"Mainstream"],[94,"Female",40,60,40,"Mainstream"],[95,"Female",32,60,42,"Mainstream"],[96,"Male",24,60,52,"Mainstream"],[97,"Female",47,60,47,"Mainstream"],[98,"Female",27,60,50,"Mainstream"],[99,"Male",48,61,42,"Mainstream"],[100,"Male",20,61,49,"Mainstream"],[101,"Female",23,62,41,"Mainstream"],[102,"Female",49,62,48,"Mainstream"],[103,"Male",67,62,59,"Mainstream"],[104,"Male",26,62,55,"Mainstream"],[105,"Male",49,62,56,"Mainstream"],[106,"Female",21,62,42,"Mainstream"],[107,"Female",66,63,50,"Mainstream"],[108,"Male",54,63,46,"Mainstream"],[109,"Male",68,63,43,"Mainstream"],[110,"Male",66,63,48,"Mainstream"],[111,"Male",65,63,52,"Mainstream"],[112,"Female",19,63,54,"Mainstream"],[113,"Female",38,64,42,"Mainstream"],[114,"Male",19,64,46,"Mainstream"],[115,"Female",18,65,48,"Mainstream"],[116,"Female",19,65,50,"Mainstream"],[117,"Female",63,65,43,"Mainstream"],[118,"Female",49,65,59,"Mainstream"],[119,"Female",51,67,43,"Mainstream"],[120,"Female",50,67,57,"Mainstream"],[121,"Male",27,67,56,"Mainstream"],[122,"Female",38,67,40,"Mainstream"],[123,"Female",40,69,58,"Mainstream"],[124,"Male",39,69,91,"Premium Spenders"],[125,"Female",23,70,29,"Careful Wealthy"],[126,"Female",31,70,77,"Premium Spenders"],[127,"Male",43,71,35,"Mainstream"],[128,"Male",40,71,95,"Premium Spenders"],[129,"Male",59,71,11,"Careful Wealthy"],[130,"Male",38,71,75,"Premium Spenders"],[131,"Male",47,71,9,"Careful Wealthy"],[132,"Male",39,71,75,"Premium Spenders"],[133,"Female",25,72,34,"Mainstream"],[134,"Female",31,72,71,"Premium Spenders"],[135,"Male",20,73,5,"Careful Wealthy"],[136,"Female",29,73,88,"Premium Spenders"],[137,"Female",44,73,7,"Careful Wealthy"],[138,"Male",32,73,73,"Premium Spenders"],[139,"Male",19,74,10,"Careful Wealthy"],[140,"Female",35,74,72,"Premium Spenders"],[141,"Female",57,75,5,"Careful Wealthy"],[142,"Male",32,75,93,"Premium Spenders"],[143,"Female",28,76,40,"Mainstream"],[144,"Female",32,76,87,"Premium Spenders"],[145,"Male",25,77,12,"Careful Wealthy"],[146,"Male",28,77,97,"Premium Spenders"],[147,"Male",48,77,36,"Careful Wealthy"],[148,"Female",32,77,74,"Premium Spenders"],[149,"Female",34,78,22,"Careful Wealthy"],[150,"Male",34,78,90,"Premium Spenders"],[151,"Male",43,78,17,"Careful Wealthy"],[152,"Male",39,78,88,"Premium Spenders"],[153,"Female",44,78,20,"Careful Wealthy"],[154,"Female",38,78,76,"Premium Spenders"],[155,"Female",47,78,16,"Careful Wealthy"],[156,"Female",27,78,89,"Premium Spenders"],[157,"Male",37,78,1,"Careful Wealthy"],[158,"Female",30,78,78,"Premium Spenders"],[159,"Male",34,78,1,"Careful Wealthy"],[160,"Female",30,78,73,"Premium Spenders"],[161,"Female",56,79,35,"Careful Wealthy"],[162,"Female",29,79,83,"Premium Spenders"],[163,"Male",19,81,5,"Careful Wealthy"],[164,"Female",31,81,93,"Premium Spenders"],[165,"Male",50,85,26,"Careful Wealthy"],[166,"Female",36,85,75,"Premium Spenders"],[167,"Male",42,86,20,"Careful Wealthy"],[168,"Female",33,86,95,"Premium Spenders"],[169,"Female",36,87,27,"Careful Wealthy"],[170,"Male",32,87,63,"Premium Spenders"],[171,"Male",40,87,13,"Careful Wealthy"],[172,"Male",28,87,75,"Premium Spenders"],[173,"Male",36,87,10,"Careful Wealthy"],[174,"Male",36,87,92,"Premium Spenders"],[175,"Female",52,88,13,"Careful Wealthy"],[176,"Female",30,88,86,"Premium Spenders"],[177,"Male",58,88,15,"Careful Wealthy"],[178,"Male",27,88,69,"Premium Spenders"],[179,"Male",59,93,14,"Careful Wealthy"],[180,"Male",35,93,90,"Premium Spenders"],[181,"Female",37,97,32,"Careful Wealthy"],[182,"Female",32,97,86,"Premium Spenders"],[183,"Male",46,98,15,"Careful Wealthy"],[184,"Female",29,98,88,"Premium Spenders"],[185,"Female",41,99,39,"Careful Wealthy"],[186,"Male",30,99,97,"Premium Spenders"],[187,"Female",54,101,24,"Careful Wealthy"],[188,"Male",28,101,68,"Premium Spenders"],[189,"Female",41,103,17,"Careful Wealthy"],[190,"Female",36,103,85,"Premium Spenders"],[191,"Female",34,103,23,"Careful Wealthy"],[192,"Female",32,103,69,"Premium Spenders"],[193,"Male",33,113,8,"Careful Wealthy"],[194,"Female",38,113,91,"Premium Spenders"],[195,"Female",47,120,16,"Careful Wealthy"],[196,"Female",35,120,79,"Premium Spenders"],[197,"Female",45,126,28,"Careful Wealthy"],[198,"Male",32,126,74,"Premium Spenders"],[199,"Male",32,137,18,"Careful Wealthy"],[200,"Male",30,137,83,"Premium Spenders"]].map(a=>({id:a[0],g:a[1],age:a[2],inc:a[3],sp:a[4],seg:a[5]}));
+const ag=a=>a<30?'18-29':a<45?'30-44':a<60?'45-59':'60+';
+const AGS=['18-29','30-44','45-59','60+'];
+let F={seg:'',gender:'',age:''},charts={};
+const avg=(a,f)=>a.length?a.reduce((s,r)=>s+r[f],0)/a.length:0;
+const base=()=>D.filter(r=>(!F.gender||r.g===F.gender)&&(!F.age||ag(r.age)===F.age));
+function toggle(s){F.seg=F.seg===s?'':s;render()}
+function draw(id,cfg){charts[id]&&charts[id].destroy();charts[id]=new Chart($('#'+id),cfg)}
+
+$('#play').innerHTML=ORDER.map(s=>{const r=D.filter(x=>x.seg===s);return `<div class="card" data-s="${s}" style="--c:${SEG[s].c}"><h3>${s}</h3><small>${r.length} customers, age ${avg(r,'age').toFixed(0)}, income ${avg(r,'inc').toFixed(0)}k, spending ${avg(r,'sp').toFixed(0)}</small><p>${SEG[s].d}</p><p><b>Action:</b> ${SEG[s].a}</p></div>`}).join('');
+$('#gender').onchange=e=>{F.gender=e.target.value;render()};
+$('#age').onchange=e=>{F.age=e.target.value;render()};
+$('#reset').onclick=()=>{F={seg:'',gender:'',age:''};$('#gender').value='';$('#age').value='';render()};
+
+function render(){
+ const b=base(),rows=F.seg?b.filter(r=>r.seg===F.seg):b;
+ $('#segs').innerHTML=ORDER.map(s=>{const n=b.filter(r=>r.seg===s).length;return `<button class="seg${F.seg===s?' on':''}" style="--c:${SEG[s].c}" data-s="${s}" aria-pressed="${F.seg===s}"><b>${s}</b><span>${n} customers${b.length?' ('+Math.round(n/b.length*100)+'%)':''}</span></button>`}).join('');
+ document.querySelectorAll('.seg').forEach(x=>x.onclick=()=>toggle(x.dataset.s));
+ document.querySelectorAll('.card').forEach(x=>x.classList.toggle('dim',!!F.seg&&x.dataset.s!==F.seg));
+ $('#k-n').textContent=rows.length;
+ $('#k-age').textContent=rows.length?avg(rows,'age').toFixed(1):'–';
+ $('#k-inc').textContent=rows.length?avg(rows,'inc').toFixed(1):'–';
+ $('#k-sp').textContent=rows.length?avg(rows,'sp').toFixed(1):'–';
+ $('#k-f').textContent=rows.length?Math.round(rows.filter(r=>r.g==='Female').length/rows.length*100)+'%':'–';
+ const present=ORDER.filter(s=>rows.some(r=>r.seg===s));
+ const grid=css('--grid'),acc=css('--accent'),amb=css('--amber'),panel=css('--panel');
+ Chart.defaults.color=css('--muted');Chart.defaults.font.family='"Instrument Sans",system-ui,sans-serif';
+ draw('c-sc',{type:'scatter',data:{datasets:present.map(s=>({label:s,backgroundColor:SEG[s].c,pointRadius:5,pointHoverRadius:7,data:rows.filter(r=>r.seg===s).map(r=>({x:r.inc,y:r.sp,r}))}))},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>{const r=c.raw.r;return ` #${r.id} ${r.seg}: ${r.g}, age ${r.age}, income ${r.inc}k, spending ${r.sp}`}}}},
+   scales:{x:{min:0,max:145,title:{display:true,text:'Annual income (k$)'},grid:{color:grid}},y:{min:0,max:105,title:{display:true,text:'Spending score'},grid:{color:grid}}}}});
+ draw('c-pr',{type:'bar',data:{labels:present,datasets:[
+  {label:'Avg age',data:present.map(s=>avg(rows.filter(r=>r.seg===s),'age')),backgroundColor:'#8B97A8'},
+  {label:'Avg income (k$)',data:present.map(s=>avg(rows.filter(r=>r.seg===s),'inc')),backgroundColor:acc},
+  {label:'Avg spending',data:present.map(s=>avg(rows.filter(r=>r.seg===s),'sp')),backgroundColor:amb}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+c.parsed.y.toFixed(1)}}},scales:{y:{grid:{color:grid}},x:{grid:{display:false}}}}});
+ const cs=ORDER.map(s=>b.filter(r=>r.seg===s).length);
+ draw('c-sz',{type:'doughnut',data:{labels:ORDER,datasets:[{data:cs,backgroundColor:ORDER.map(s=>!F.seg||s===F.seg?SEG[s].c:SEG[s].c+'44'),borderColor:panel,borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'58%',onClick:(e,el)=>{if(el.length)toggle(ORDER[el[0].index])},plugins:{legend:{position:'bottom'}}}});
+ draw('c-ag',{type:'bar',data:{labels:AGS,datasets:present.map(s=>({label:s,backgroundColor:SEG[s].c,data:AGS.map(a=>rows.filter(r=>r.seg===s&&ag(r.age)===a).length)}))},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:grid}}}}});
+ $('#t-h').textContent='Customers ('+rows.length+'), highest spenders first';
+ $('#tb').innerHTML=[...rows].sort((a,b)=>b.sp-a.sp).map(r=>`<tr><td>${r.id}</td><td><span class="dot" style="background:${SEG[r.seg].c}"></span>${r.seg}</td><td>${r.g}</td><td>${r.age}</td><td>${r.inc}</td><td>${r.sp}</td></tr>`).join('');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
